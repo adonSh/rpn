@@ -1,4 +1,3 @@
-#TODO: floats, better logic
 import sys
 from typing import List, Callable, Tuple, Union, Optional
 from enum import Enum, auto
