@@ -21,8 +21,6 @@ def is_op(sym: str) -> bool:
             sym == '-' or
             sym == '*' or 
             sym == '/' or
-            sym == 'c' or
-            sym == 'q')
 
 def is_valid(sym: str) -> bool:
     return (sym == 'q' or
@@ -41,15 +39,15 @@ def op(sym: str) -> Callable[[int, int], int]:
     return lambda x, y: y // x
 
 def eval(s: Stack, op: Callable[[int, int], int]) -> int:
-    return push(s, op(s.pop(), s.pop()))
+    return push(s, op(pop(s), pop(s)))
     
 def loop(s: Stack, cur: str) -> str:
-    if cur == 'c':
-        return empty(s)
-    if cur == 'q':
-        sys.exit()
     if not is_valid(cur):
         return 'invalid input'
+    if cur == 'q':
+        sys.exit()
+    if cur == 'c':
+        return empty(s)
     if is_op(cur):
         return str(eval(s, op(cur))) if len(s) > 1 else 'too few args'
     return str(push(s, int(cur)))
