@@ -1,40 +1,42 @@
 import sys
 from typing import List, Callable, Union, Optional
-from enum import Enum, auto
 
 # Constants and typedefs
 PROMPT = '> '
-Stack = List
-Op    = Callable[[int, int], int]
-Exp   = Union[int, Op]
+OUT    = sys.stdout
+Stack  = List
+Op     = Callable[[int, int], int]
+Exp    = Union[int, Op]
 
-# Stack Operations
+# Stack operations
 def empty(s: Stack[int]) -> None:
     return s.clear()
 
+#TODO: make pop optional or at least evaluate
 def pop(s: Stack[int]) -> int:
     return s.pop()
 
 def peek(s: Stack[int]) -> Optional[int]:
-    return s[-1] if len(s) > 0 else None
+    return s[len(s) - 1] if len(s) > 0 else None
 
 def push(s: Stack[int], n: int) -> int:
     s.append(n)
     return n
 
-# Pre-processing functions
-def is_op(sym: str) -> bool:
-    return (sym == '+' or 
-            sym == '-' or
-            sym == '*' or 
-            sym == '/')
-
+# Pre-processing
 def is_valid(sym: str) -> bool:
     return (sym == ''  or
             sym == 'q' or
             sym == 'c' or
             is_op(sym) or
-            sym.isdigit()) # <- distastefully pythonic
+            sym.isdigit()) # <- too pythonic
+
+# Syntactic processing
+def is_op(sym: str) -> bool:
+    return (sym == '+' or 
+            sym == '-' or
+            sym == '*' or 
+            sym == '/')
 
 def op(sym: str) -> Op:
     op: Op
@@ -48,38 +50,39 @@ def op(sym: str) -> Op:
         op = lambda x, y: y // x
     return op
 
-# Syntactic processing
-def read(stk: Stack[int], sym: str) -> Exp:
-    exp: Optional[Exp]
-    if not is_valid(sym):
-        print('invalid input')
-        exp = read(stk, input(PROMPT))
-    elif sym == 'q':
-        sys.exit()
-    elif sym == 'c':
-        empty(stk)
-        exp = read(stk, input(PROMPT))
-    elif sym == '':
-        exp = peek(stk)
-        if not isinstance(exp, int):
-            print('stack is empty')
-            exp = read(stk, input(PROMPT))
-    elif is_op(sym):
-        if len(stk) > 1:
-            exp = op(sym)
-        else: 
-            print('too few arguments')
-            exp = read(stk, input(PROMPT))
-    else:
-        exp = int(sym)
-    return exp
+def read(sym: str) -> Exp:
+    return op(sym) if is_op(sym) else int(sym)
 
-# Semantic Processing
+# Semantic processing
 def evaluate(s: Stack[int], e: Exp) -> int:
-    return push(s, e if isinstance(e, int) else e(pop(s), pop(s)))
+    return push(s, e) if isinstance(e, int) else evaluate(s, e(pop(s), pop(s)))
 
 # Main logic
-stack: Stack[int] = []
+def interface(stack: Stack[int], entry: str) -> int:
+    if not is_valid(entry):
+        print('invalid input', file=OUT)
+    elif entry == '': #TODO: mypy error here, check len better
+        print(str(peek(stack), file=OUT) if len(stack) > 0 else 'stack is empty')
+    elif entry == 'c':
+        empty(stack)
+    elif entry != 'q':
+        if is_op(entry) and len(stack) < 2:
+            print('too few arguments', file=OUT)
+        else:
+            print(str(evaluate(stack, read(entry))), file=OUT)
+    else:
+        if len(stack) > 0:
+            print(pop(stack), file=sys.stdout)
+        return 0
+    return interface(stack, input(PROMPT))
 
-while True:
-   print(str(evaluate(stack, read(stack, input(PROMPT)))))
+# entry point
+if len(sys.argv) > 1:
+    if sys.argv[1] == '-q' or sys.argv[1] == '--quiet':
+        PROMPT = ''
+        OUT = open('/dev/null', 'w')
+    else:
+        print('invalid options')
+        sys.exit(1)
+stack: Stack[int] = []
+sys.exit(interface(stack, input(PROMPT)))
