@@ -3,18 +3,17 @@ from typing import List, Callable, Union, Optional
 
 # Constants and typedefs
 PROMPT = '> '
-OUT    = sys.stdout
-Stack  = List
+STREAM = sys.stdout
 Op     = Callable[[int, int], int]
 Exp    = Union[int, Op]
+Stack  = List
 
 # Stack operations
 def empty(s: Stack[int]) -> None:
     return s.clear()
 
-#TODO: make pop optional or at least evaluate
-def pop(s: Stack[int]) -> int:
-    return s.pop()
+def pop(s: Stack[int]) -> Optional[int]:
+    return s.pop() if len(s) > 0 else None
 
 def peek(s: Stack[int]) -> Optional[int]:
     return s[len(s) - 1] if len(s) > 0 else None
@@ -54,25 +53,37 @@ def read(sym: str) -> Exp:
     return op(sym) if is_op(sym) else int(sym)
 
 # Semantic processing
-def evaluate(s: Stack[int], e: Exp) -> int:
-    return push(s, e) if isinstance(e, int) else evaluate(s, e(pop(s), pop(s)))
+def evaluate(s: Stack[int], e: Exp) -> Optional[int]:
+    result: Optional[int]
+    if isinstance(e, int):
+        result = push(s, e)
+    else:
+        result = None
+        x = pop(s)
+        y = pop(s)
+        if isinstance(x, int):
+            if isinstance(y, int):
+                result = evaluate(s, e(x, y))
+            else:
+                push(s, x)
+    return result
 
 # Main logic
 def interface(stack: Stack[int], entry: str) -> int:
     if not is_valid(entry):
-        print('invalid input', file=OUT)
-    elif entry == '': #TODO: mypy error here, check len better
-        print(str(peek(stack), file=OUT) if len(stack) > 0 else 'stack is empty')
+        print('invalid input', file=STREAM)
+    elif entry == '':
+        topval = peek(stack)
+        print(str(topval) if isinstance(topval, int) else 'stack is empty')
     elif entry == 'c':
         empty(stack)
     elif entry != 'q':
-        if is_op(entry) and len(stack) < 2:
-            print('too few arguments', file=OUT)
-        else:
-            print(str(evaluate(stack, read(entry))), file=OUT)
+        result = evaluate(stack, read(entry))
+        print(str(result) if isinstance(result, int) else 'too few arguments')
     else:
-        if len(stack) > 0:
-            print(pop(stack), file=sys.stdout)
+        finalval = pop(stack)
+        if isinstance(finalval, int):
+            print(finalval, file=sys.stdout)
         return 0
     return interface(stack, input(PROMPT))
 
@@ -80,9 +91,8 @@ def interface(stack: Stack[int], entry: str) -> int:
 if len(sys.argv) > 1:
     if sys.argv[1] == '-q' or sys.argv[1] == '--quiet':
         PROMPT = ''
-        OUT = open('/dev/null', 'w')
+        STREAM = open('/dev/null', 'w')
     else:
         print('invalid options')
         sys.exit(1)
-stack: Stack[int] = []
-sys.exit(interface(stack, input(PROMPT)))
+sys.exit(interface([], input(PROMPT)))
