@@ -10,7 +10,7 @@ Stack  = List
 
 # Stack operations
 def empty(s: Stack[int]) -> None:
-    return s.clear()
+    s.clear()
 
 def pop(s: Stack[int]) -> Optional[int]:
     return s.pop() if len(s) > 0 else None
@@ -24,20 +24,18 @@ def push(s: Stack[int], n: int) -> int:
 
 # Pre-processing
 def is_valid(sym: str) -> bool:
-    return (sym == ''  or
-            sym == 'q' or
-            sym == 'c' or
-            is_op(sym) or
-            sym.isdigit()) # <- too pythonic
+    return (is_op(sym) or
+            all(ord(digit) > 47 and ord(digit) < 58 for digit in sym))
 
-# Syntactic processing
 def is_op(sym: str) -> bool:
     return (sym == '+' or 
             sym == '-' or
             sym == '*' or 
             sym == '/')
 
+# Syntactic processing (must be given valid syntax)
 def op(sym: str) -> Op:
+    """ Generates genuine operators from syntactic forms """
     op: Op
     if sym == '+':
         op = lambda x, y: y + x
@@ -50,10 +48,12 @@ def op(sym: str) -> Op:
     return op
 
 def read(sym: str) -> Exp:
+    """ Generates RPN expressions """
     return op(sym) if is_op(sym) else int(sym)
 
 # Semantic processing
 def evaluate(s: Stack[int], e: Exp) -> Optional[int]:
+    """ Evaluates RPN expressions """
     result: Optional[int]
     if isinstance(e, int):
         result = push(s, e)
@@ -70,21 +70,27 @@ def evaluate(s: Stack[int], e: Exp) -> Optional[int]:
 
 # Main logic
 def interface(stack: Stack[int], entry: str) -> int:
-    if not is_valid(entry):
-        print('invalid input', file=STREAM)
-    elif entry == '':
-        topval = peek(stack)
-        print(str(topval) if isinstance(topval, int) else 'stack is empty')
-    elif entry == 'c':
-        empty(stack)
-    elif entry != 'q':
-        result = evaluate(stack, read(entry))
-        print(str(result) if isinstance(result, int) else 'too few arguments')
-    else:
+    """ Interface and preprocessor; responds to 'enter' (peek), 'q' (quit),
+        and 'c' (clear) commands. Otherwise, evaluates RPN syntax """
+    if entry == 'q':
         finalval = pop(stack)
         if isinstance(finalval, int):
             print(finalval, file=sys.stdout)
+        if STREAM != sys.stdout:
+            STREAM.close()
         return 0
+    elif entry == 'c':
+        empty(stack)
+    elif entry == '':
+        topval = peek(stack)
+        print(str(topval) if isinstance(topval, int) else 'stack is empty',
+              file=STREAM)
+    elif is_valid(entry):
+        result = evaluate(stack, read(entry))
+        print(str(result) if isinstance(result, int) else 'too few arguments',
+              file=STREAM)
+    else:
+        print('invalid input', file=STREAM)
     return interface(stack, input(PROMPT))
 
 # entry point
@@ -95,4 +101,9 @@ if len(sys.argv) > 1:
     else:
         print('invalid options')
         sys.exit(1)
-sys.exit(interface([], input(PROMPT)))
+
+try:
+    sys.exit(interface([], input(PROMPT)))
+except EOFError:
+    print()
+    sys.exit(0)
