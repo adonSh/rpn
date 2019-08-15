@@ -7,15 +7,16 @@ from stack import *
 PROMPT = '> '
 STREAM = sys.stdout
 Op     = Callable[[int, int], int]
-Cmd    = Callable[[Stack], Optional[int]]
+Cmd    = Callable[[Stack[int]], int]
 Exp    = Union[int, Op, Cmd]
 
 # Clean exit function
-def quit(s: Stack) -> None:
+def quit(s: Stack[int]) -> int:
     print(pop(s), file=sys.stdout)
     if STREAM != sys.stdout:
         STREAM.close()
     sys.exit()
+    return 0 # never happens, exists solely so evaluate() always returns int
 
 # Pre-processing
 def tokenize(entry: str) -> List[str]:
@@ -69,12 +70,12 @@ def read(sym: str) -> Exp:
     return exp
 
 # Semantic processing
-# (Since Callables are not comparable, I'm cheating by counting the type
-# annotations in expressions that aren't ints. I would like to find a better
-# solution that also appeases mypy)
-def evaluate(s: Stack, e: Exp) -> Optional[int]:
+# (TODO: Since Callables are not comparable, I'm cheating by counting the type
+# hints in expressions that aren't ints. I would like to find a better solution
+# that also appeases mypy)
+def evaluate(s: Stack[int], e: Exp) -> int:
     """ Evaluates RPN expressions """
-    result = None
+    result: int
     if isinstance(e, int):
         result = push(s, e)
     elif len(get_type_hints(e).keys()) == 2:
@@ -84,7 +85,7 @@ def evaluate(s: Stack, e: Exp) -> Optional[int]:
     return result
         
 # Main logic
-def parser(stack: Stack, token: str) -> Optional[int]:
+def parser(stack: Stack[int], token: str) -> Optional[int]:
     """ Parser and preprocessor, sends valid RPN syntax to the evaluator """
     result = None
     if not is_valid(token):
@@ -106,6 +107,8 @@ stack = new()
 try:
     while True:
         for t in tokenize(input(PROMPT)):
-            print(str(parser(stack, t)), file=STREAM)
+            val = parser(stack, t)
+            print(str(val) if val != None else '', file=STREAM)
 except EOFError:
+    print()
     quit(stack)

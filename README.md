@@ -5,7 +5,7 @@ than it needs to be. That's because I tried to treat this as an exercise in
 building not just a calculator, but a robust, reproducible, and extensible
 (if simple) language interpreter. RPN is just the simplest syntax I could think
 of. That's why the logic, parsing, and evaluation are separate, why everything
-is aggressively type-annotated, and why I try to avoid "pythonic" code where
+is aggressively type-hinted, and why I try to avoid "pythonic" code where
 possible.
 
 The calculator is mostly meant to be used interactively, but it can also be fed
