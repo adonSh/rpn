@@ -47,18 +47,17 @@ def op(sym: str) -> Op:
         op = lambda x, y: y // x
     return op
 
-def read(sym: str) -> Exp:
+def tokenizer(sym: str) -> Exp:
     """ Generates RPN expressions """
     return op(sym) if is_op(sym) else int(sym)
 
 # Semantic processing
 def evaluate(s: Stack[int], e: Exp) -> Optional[int]:
     """ Evaluates RPN expressions """
-    result: Optional[int]
+    result = None
     if isinstance(e, int):
         result = push(s, e)
     else:
-        result = None
         x = pop(s)
         y = pop(s)
         if isinstance(x, int):
@@ -86,7 +85,7 @@ def interface(stack: Stack[int], entry: str) -> int:
         print(str(topval) if isinstance(topval, int) else 'stack is empty',
               file=STREAM)
     elif is_valid(entry):
-        result = evaluate(stack, read(entry))
+        result = evaluate(stack, tokenizer(entry))
         print(str(result) if isinstance(result, int) else 'too few arguments',
               file=STREAM)
     else:
