@@ -47,7 +47,7 @@ def op(sym: str) -> Op:
         op = lambda x, y: y // x
     return op
 
-def tokenizer(sym: str) -> Exp:
+def read(sym: str) -> Exp:
     """ Generates RPN expressions """
     return op(sym) if is_op(sym) else int(sym)
 
@@ -85,7 +85,7 @@ def interface(stack: Stack[int], entry: str) -> int:
         print(str(topval) if isinstance(topval, int) else 'stack is empty',
               file=STREAM)
     elif is_valid(entry):
-        result = evaluate(stack, tokenizer(entry))
+        result = evaluate(stack, read(entry))
         print(str(result) if isinstance(result, int) else 'too few arguments',
               file=STREAM)
     else:
