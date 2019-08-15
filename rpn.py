@@ -1,38 +1,26 @@
 import sys
-from typing import List, Callable, Union, Optional, Tuple
+from typing import List, Callable, Union, Optional, Tuple, get_type_hints
+
+from stack import *
 
 # Constants and typedefs
 PROMPT = '> '
 STREAM = sys.stdout
-Stack  = List
 Op     = Callable[[int, int], int]
-Cmd    = Callable[[Stack[int]], int]
-Exp    = Tuple[Union[int, Op, Cmd],str]
+Cmd    = Callable[[Stack], Optional[int]]
+Exp    = Union[int, Op, Cmd]
 
-def quit(s: Stack[int]) -> None:
-    finalval = pop(s)
-    if isinstance(finalval, int):
-        print(finalval, file=sys.stdout)
+# Clean exit function
+def quit(s: Stack) -> None:
+    print(pop(s), file=sys.stdout)
     if STREAM != sys.stdout:
         STREAM.close()
     sys.exit()
 
-# Stack operations
-def empty(s: Stack[int]) -> int:
-    s.clear()
-    return push(s, 0)
-
-def peek(s: Stack[int]) -> Optional[int]:
-    return s[len(s) - 1] if len(s) > 0 else None
-
-def pop(s: Stack[int]) -> Optional[int]:
-    return s.pop() if len(s) > 0 else None
-
-def push(s: Stack[int], n: int) -> int:
-    s.append(n)
-    return n
-
 # Pre-processing
+def tokenize(entry: str) -> List[str]:
+    return entry.split() if entry != '' else ['']
+
 def is_valid(sym: str) -> bool:
     return (is_cmd(sym) or
             is_op(sym)  or
@@ -71,36 +59,32 @@ def cmd(sym: str) -> Cmd:
 
 def read(sym: str) -> Exp:
     """ Generates RPN expressions """
-#   return list(map(lambda sym: (cmd(sym), 'cmd') if is_cmd(sym) else (op(sym), 'op') if is_op(sym) else (int(sym), 'num'), syntax))
     exp: Exp
     if is_cmd(sym):
-        exp = (cmd(sym), 'cmd')
+        exp = cmd(sym)
     elif is_op(sym):
-        exp = (op(sym), 'op')
+        exp = op(sym)
     else:
-        exp = (int(sym), 'num')
+        exp = int(sym)
     return exp
 
 # Semantic processing
-def evaluate(s: Stack[int], e: Exp) -> int:
+# (Since Callables are not comparable, I'm cheating by counting the type
+# annotations in expressions that aren't ints. I would like to find a better
+# solution that also appeases mypy)
+def evaluate(s: Stack, e: Exp) -> Optional[int]:
     """ Evaluates RPN expressions """
-    result: int
-    if e[1] == 'cmd':
-        result = e[0](s)
-    elif e[1] == 'num':
-        result = push(s, e[0])
-    elif e[1] == 'op':
-        x = pop(s)
-        y = pop(s)
-        if isinstance(x, int):
-            if isinstance(y, int):
-                result = evaluate(s, (e[0](x, y), 'num'))
-            else:
-                result = push(s, x)
+    result = None
+    if isinstance(e, int):
+        result = push(s, e)
+    elif len(get_type_hints(e).keys()) == 2:
+        result = e(s)
+    else:
+        result = evaluate(s, e(pop(s), pop(s)))
     return result
         
 # Main logic
-def parser(stack: Stack[int], token: str) -> Optional[int]:
+def parser(stack: Stack, token: str) -> Optional[int]:
     """ Parser and preprocessor, sends valid RPN syntax to the evaluator """
     result = None
     if not is_valid(token):
@@ -118,10 +102,10 @@ if len(sys.argv) > 1:
         print('invalid options', file=sys.stderr)
         sys.exit(1)
 
-stack = [0]
+stack = new()
 try:
     while True:
-        print(str(parser(stack, input(PROMPT))))
+        for t in tokenize(input(PROMPT)):
+            print(str(parser(stack, t)), file=STREAM)
 except EOFError:
-    print()
-    sys.exit(0)
+    quit(stack)
