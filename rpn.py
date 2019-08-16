@@ -2,34 +2,27 @@ import sys
 import inspect
 from typing import List, Callable, Union, Optional, Tuple, get_type_hints, cast
 
-from stack import *
+from stack import * #TODO: don't want this long-term
 
 # Constants and typedefs
-PROMPT = '> '
-STREAM = sys.stdout
-Op     = Callable[[int, int], int]
-Cmd    = Callable[[Stack[int]], int]
-Exp    = Union[int, Op, Cmd]
-
-# Clean exit function
-def quit(s: Stack[int]) -> int:
-    print(pop(s), file=sys.stdout)
-    if STREAM != sys.stdout:
-        STREAM.close()
-    sys.exit()
-    return 0 # never happens, exists solely so evaluate() always returns int
+PROMPT  = '> '
+STREAM  = sys.stdout
+Op      = Callable[[int, int], int]
+Cmd     = Callable[[Stack[int]], int]
+ExpAtom = Union[int, Op, Cmd]
+Exp     = Union[ExpAtom, List[ExpAtom]]
 
 # Pre-processing
 def tokenize(entry: str) -> List[str]:
     return entry.split() if entry != '' else ['']
 
-def is_valid(sym: str) -> bool:
-    return (is_cmd(sym) or
-            is_op(sym)  or
-            all(ord(digit) > 47 and ord(digit) < 58 for digit in sym))
+def is_valid(token: str) -> bool:
+    return (is_cmd(token) or
+            is_op(token)  or
+            all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
 
 def is_cmd(token: str) -> bool:
-    return token == 'q' or token == 'c' or token == '' or token == 'p'
+    return token == 'q' or token == 'c' or token == ''#or token == 'p'
 
 def is_op(token: str) -> bool:
     return token == '+' or token == '-' or token == '*' or token == '/'
@@ -57,13 +50,13 @@ def cmd(sym: str) -> Cmd:
         cmd = empty
     elif sym == '':
         cmd = peek
-    elif sym == 'p':
-        cmd = lambda s: print(s)
+#   elif sym == 'p':
+#       cmd = lambda s: print(s)
     return cmd
 
-def read(sym: str) -> Exp:
-    """ Generates RPN expressions """
-    exp: Exp
+def read(sym: str) -> ExpAtom:
+    """ Generates atomic RPN expressions """
+    exp: ExpAtom
     if is_cmd(sym):
         exp = cmd(sym)
     elif is_op(sym):
@@ -80,6 +73,12 @@ def evaluate(s: Stack[int], e: Exp) -> int:
     result: int
     if isinstance(e, int):
         result = push(s, e)
+    elif isinstance(e, list):
+        if len(e) == 0:
+            result = peek(s)
+        else:
+            evaluate(s, e[0])
+            result = evaluate(s, e[1:])
     elif len(inspect.signature(e).parameters) == 1:
         result = cast(Cmd, e)(s)
     elif len(inspect.signature(e).parameters) == 2:
@@ -87,13 +86,20 @@ def evaluate(s: Stack[int], e: Exp) -> int:
     return result
         
 # Main logic
-def parser(stack: Stack[int], token: str) -> Optional[int]:
+def quit(s: Stack[int]) -> int:
+    print(pop(s), file=sys.stdout)
+    if STREAM != sys.stdout:
+        STREAM.close()
+    sys.exit()
+    return 0 # never happens, exists solely so evaluate() always returns int
+
+def parse(stack: Stack[int], tokens: List[str]) -> Optional[int]:
     """ Parser and preprocessor, sends valid RPN syntax to the evaluator """
     result = None
-    if not is_valid(token):
+    if not all(is_valid(t) for t in tokens):
         print('Syntax Error', file=STREAM)
     else:
-        result = evaluate(stack, read(token))
+        result = evaluate(stack, list(map(read, tokens)))
     return result
 
 # Entry point
@@ -108,9 +114,8 @@ if len(sys.argv) > 1:
 stack = new()
 try:
     while True:
-        for t in tokenize(input(PROMPT)):
-            val = parser(stack, t)
-            print(str(val) + '\n' if val != None else '', file=STREAM, end='')
+        val = parse(stack, tokenize(input(PROMPT)))
+        print(str(val) + '\n' if val != None else '', file=STREAM, end='')
 except EOFError:
-    print()
+    print('', file=STREAM)
     quit(stack)
