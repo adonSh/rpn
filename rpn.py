@@ -2,14 +2,14 @@ import sys
 import inspect
 from typing import List, Callable, Union, Optional, Tuple, get_type_hints, cast
 
-from stack import * #TODO: don't want this long-term
+import stack
 
 # Constants and typedefs
 PROMPT  = '> '
 STREAM  = sys.stdout
-Op      = Callable[[int, int], int]
-Cmd     = Callable[[Stack[int]], int]
-ExpAtom = Union[int, Op, Cmd]
+Stack   = stack.Stack
+Op      = Callable[[Stack[int]], int]
+ExpAtom = Union[int, Op]
 Exp     = Union[ExpAtom, List[ExpAtom]]
 
 # Pre-processing
@@ -17,90 +17,94 @@ def tokenize(entry: str) -> List[str]:
     return entry.split() if entry != '' else ['']
 
 def is_valid(token: str) -> bool:
-    return (is_cmd(token) or
-            is_op(token)  or
+    return (is_op(token)  or
             all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
 
-def is_cmd(token: str) -> bool:
-    return token == 'q' or token == 'c' or token == ''#or token == 'p'
-
 def is_op(token: str) -> bool:
-    return token == '+' or token == '-' or token == '*' or token == '/'
+    return (token == '+' or
+            token == '-' or
+            token == '*' or token == 'x' or
+            token == '/' or
+            token == 'n' or
+            token == 'c' or
+            token == 'q' or
+#           token == 'p' or
+            token == '')
 
 # Syntactic processing (must be given valid syntax)
 def op(sym: str) -> Op:
-    """ Generates genuine operators from syntactic forms """
+    """ Generates genuine operators from syntactic forms.
+        Operators only pop and cannot push to the stack. """
     op: Op
     if sym == '+':
-        op = lambda x, y: y + x
+        op = lambda s: stack.pop(s) + stack.pop(s)
     elif sym == '-':
-        op = lambda x, y: y - x
-    elif sym == '*':
-        op = lambda x, y: y * x
+        op = lambda s: -stack.pop(s) + stack.pop(s)
+    elif sym == '*' or sym == 'x':
+        op = lambda s: stack.pop(s) * stack.pop(s)
     elif sym == '/':
-        op = lambda x, y: y // x
+        op = lambda s: int((1 / stack.pop(s)) * stack.pop(s))
+    elif sym == 'n':
+        op = lambda s: -stack.pop(s)
+    elif sym == 'c':
+        op = stack.empty
+    elif sym == 'q':
+        op = quit
+#   elif sym == 'p':
+#       op = lambda s: print(s)
+    elif sym == '':
+        op = stack.peek
     return op
 
-def cmd(sym: str) -> Cmd:
-    """ Generates command functions from syntactic forms """
-    cmd: Cmd
-    if sym == 'q':
-        cmd = quit
-    elif sym == 'c':
-        cmd = empty
-    elif sym == '':
-        cmd = peek
-#   elif sym == 'p':
-#       cmd = lambda s: print(s)
-    return cmd
-
-def read(sym: str) -> ExpAtom:
+def exp(sym: str) -> ExpAtom:
     """ Generates atomic RPN expressions """
-    exp: ExpAtom
-    if is_cmd(sym):
-        exp = cmd(sym)
-    elif is_op(sym):
-        exp = op(sym)
+    e: ExpAtom
+    if is_op(sym):
+        e = op(sym)
     else:
-        exp = int(sym)
-    return exp
+        e = int(sym)
+    return e
 
 # Semantic processing
-# TODO: Currently deducing type of expression from number of formal parameters
-# and using cast to satisfy mypy. Feels sloppy.
-def evaluate(s: Stack[int], e: Exp) -> int:
-    """ Evaluates RPN expressions """
-    result: int
+def evaluate(s: Stack[int], e: Optional[Exp]) -> int:
+    """ Evaluates RPN expressions and pushes them to the stack """
+    result = stack.peek(s)
     if isinstance(e, int):
-        result = push(s, e)
+        result = stack.push(s, e)
     elif isinstance(e, list):
-        if len(e) == 0:
-            result = peek(s)
-        else:
+        if len(e) > 0:
             evaluate(s, e[0])
             result = evaluate(s, e[1:])
-    elif len(inspect.signature(e).parameters) == 1:
-        result = cast(Cmd, e)(s)
-    elif len(inspect.signature(e).parameters) == 2:
-        result = evaluate(s, cast(Op, e)(pop(s), pop(s)))
+    elif e != None:
+        result = stack.push(s, cast(Op, e)(s))
     return result
         
 # Main logic
 def quit(s: Stack[int]) -> int:
-    print(pop(s), file=sys.stdout)
+    print(stack.pop(s), file=sys.stdout)
     if STREAM != sys.stdout:
         STREAM.close()
     sys.exit()
     return 0 # never happens, exists solely so evaluate() always returns int
 
-def parse(stack: Stack[int], tokens: List[str]) -> Optional[int]:
-    """ Parser and preprocessor, sends valid RPN syntax to the evaluator """
+def read(tokens: List[str]) -> Optional[Exp]:
+    """ Parser and preprocessor, returns valid RPN syntax or None """
     result = None
     if not all(is_valid(t) for t in tokens):
         print('Syntax Error', file=STREAM)
     else:
-        result = evaluate(stack, list(map(read, tokens)))
+        result = list(map(exp, tokens))
     return result
+
+def repl(s: Stack[int]) -> None:
+    """ Ye Olde Recursive REPL (maybe not the best idea for Python *shrug*) """
+    try:
+        syntax = tokenize(input(PROMPT))
+    except EOFError:
+        print('', file=STREAM)
+        quit(s)
+    print(str(evaluate(s, read(syntax))), file=STREAM)
+    repl(s)
 
 # Entry point
 if len(sys.argv) > 1:
@@ -111,11 +115,16 @@ if len(sys.argv) > 1:
         print('invalid options', file=sys.stderr)
         sys.exit(1)
 
-stack = new()
-try:
-    while True:
-        val = parse(stack, tokenize(input(PROMPT)))
-        print(str(val) + '\n' if val != None else '', file=STREAM, end='')
-except EOFError:
-    print('', file=STREAM)
-    quit(stack)
+
+repl(stack.new())
+
+# This is really how it should be run in Python.
+# I'm probably gonna blow the stack with the recursive repl.
+#stk = stack.new()
+#while True:
+#    try:
+#        syntax = tokenize(input(PROMPT))))
+#    except EOFError:
+#        print('', file=STREAM)
+#        quit(stk)
+#    print(str(evaluate(s, read(syntax))), file=STREAM, end='')

@@ -12,5 +12,16 @@ a file (through stdin). Each expression must be separated by whitespace and
 computation stops at either a 'q' character or at EOF. The `--quiet` or `-q`
 switch will suppress all output except for the final result.
 
-At this time the calculator only handles integers.
+At this time the calculator only recognizes integers and the following
+commands:
+  * `+` -- Perform Addition on the values at top of the stack
+  * `-` -- Perform Subtraction
+  * `*` -- Perform Multiplication
+  * `x` -- Perform Multiplication
+  * `/` -- Perform Integer Division
+  * `n` -- Negate the value at the top of the stack.
+  * `c` -- Clear the stack
+  * `q` -- Quit
+
+
   --Adon Shapiro
