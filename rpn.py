@@ -1,5 +1,6 @@
 import sys
-from typing import List, Callable, Union, Optional, Tuple, get_type_hints
+import inspect
+from typing import List, Callable, Union, Optional, Tuple, get_type_hints, cast
 
 from stack import *
 
@@ -28,7 +29,7 @@ def is_valid(sym: str) -> bool:
             all(ord(digit) > 47 and ord(digit) < 58 for digit in sym))
 
 def is_cmd(token: str) -> bool:
-    return token == 'q' or token == 'c' or token == ''
+    return token == 'q' or token == 'c' or token == '' or token == 'p'
 
 def is_op(token: str) -> bool:
     return token == '+' or token == '-' or token == '*' or token == '/'
@@ -56,6 +57,8 @@ def cmd(sym: str) -> Cmd:
         cmd = empty
     elif sym == '':
         cmd = peek
+    elif sym == 'p':
+        cmd = lambda s: print(s)
     return cmd
 
 def read(sym: str) -> Exp:
@@ -70,18 +73,17 @@ def read(sym: str) -> Exp:
     return exp
 
 # Semantic processing
-# (TODO: Since Callables are not comparable, I'm cheating by counting the type
-# hints in expressions that aren't ints. I would like to find a better solution
-# that also appeases mypy)
+# TODO: Currently deducing type of expression from number of formal parameters
+# and using cast to satisfy mypy. Feels sloppy.
 def evaluate(s: Stack[int], e: Exp) -> int:
     """ Evaluates RPN expressions """
     result: int
     if isinstance(e, int):
         result = push(s, e)
-    elif len(get_type_hints(e).keys()) == 2:
-        result = e(s)
-    else:
-        result = evaluate(s, e(pop(s), pop(s)))
+    elif len(inspect.signature(e).parameters) == 1:
+        result = cast(Cmd, e)(s)
+    elif len(inspect.signature(e).parameters) == 2:
+        result = evaluate(s, cast(Op, e)(pop(s), pop(s)))
     return result
         
 # Main logic
@@ -108,7 +110,7 @@ try:
     while True:
         for t in tokenize(input(PROMPT)):
             val = parser(stack, t)
-            print(str(val) if val != None else '', file=STREAM)
+            print(str(val) + '\n' if val != None else '', file=STREAM, end='')
 except EOFError:
     print()
     quit(stack)
