@@ -14,3 +14,9 @@ to try though :)
 Idea 2
 ------
 I'd like to put the abstract syntax down in BNF.
+
+Idea 3
+------
+Think about whether it makes more sense for read() to call tokenize() as a
+subroutine or if it should take tokenize()'s output as input (current
+implementation).
