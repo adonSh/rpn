@@ -1,5 +1,5 @@
 import sys
-from typing import List, Callable, Union, Optional, Tuple, cast
+from typing import List, Callable, Union, Optional, cast
 
 import stack
 
@@ -118,6 +118,5 @@ if len(sys.argv) > 1:
     else:
         print('invalid options', file=sys.stderr)
         sys.exit(1)
-
 
 repl(stack.new())
