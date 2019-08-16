@@ -13,7 +13,7 @@ computation stops at either a 'q' character or at EOF. The `--quiet` or `-q`
 switch will suppress all output except for the final result.
 
 At this time the calculator only recognizes integers and the following
-commands:
+operators and commands:
   * `+` -- Perform Addition on the values at top of the stack
   * `-` -- Perform Subtraction
   * `*` -- Perform Multiplication

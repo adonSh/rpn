@@ -1,6 +1,5 @@
 import sys
-import inspect
-from typing import List, Callable, Union, Optional, Tuple, get_type_hints, cast
+from typing import List, Callable, Union, Optional, Tuple, cast
 
 import stack
 
@@ -14,7 +13,7 @@ Exp     = Union[ExpAtom, List[ExpAtom]]
 
 # Pre-processing
 def tokenize(entry: str) -> List[str]:
-    return entry.split() if entry != '' else ['']
+    return entry.split()
 
 def is_valid(token: str) -> bool:
     return (is_op(token)  or
@@ -27,11 +26,18 @@ def is_op(token: str) -> bool:
             token == '/' or
             token == 'n' or
             token == 'c' or
-            token == 'q' or
 #           token == 'p' or
-            token == '')
+            token == 'q')
 
 # Syntactic processing (must be given valid syntax)
+def div(s: Stack[int]) -> int:
+    x = stack.pop(s)
+    if x == 0:
+        print('Division By 0 Error', file=STREAM)
+    else:
+        x = int((1 / x) * stack.pop(s))
+    return x
+        
 def op(sym: str) -> Op:
     """ Generates genuine operators from syntactic forms.
         Operators only pop and cannot push to the stack. """
@@ -43,17 +49,15 @@ def op(sym: str) -> Op:
     elif sym == '*' or sym == 'x':
         op = lambda s: stack.pop(s) * stack.pop(s)
     elif sym == '/':
-        op = lambda s: int((1 / stack.pop(s)) * stack.pop(s))
+        op = div
     elif sym == 'n':
         op = lambda s: -stack.pop(s)
     elif sym == 'c':
         op = stack.empty
-    elif sym == 'q':
-        op = quit
 #   elif sym == 'p':
 #       op = lambda s: print(s)
-    elif sym == '':
-        op = stack.peek
+    elif sym == 'q':
+        op = quit
     return op
 
 def exp(sym: str) -> ExpAtom:
@@ -75,8 +79,8 @@ def evaluate(s: Stack[int], e: Optional[Exp]) -> int:
         if len(e) > 0:
             evaluate(s, e[0])
             result = evaluate(s, e[1:])
-    elif e != None:
-        result = stack.push(s, cast(Op, e)(s))
+    elif e != None: # would be nice to typecheck this better,
+        result = evaluate(s, cast(Op, e)(s)) # but casting is fine for now
     return result
         
 # Main logic
@@ -117,14 +121,3 @@ if len(sys.argv) > 1:
 
 
 repl(stack.new())
-
-# This is really how it should be run in Python.
-# I'm probably gonna blow the stack with the recursive repl.
-#stk = stack.new()
-#while True:
-#    try:
-#        syntax = tokenize(input(PROMPT))))
-#    except EOFError:
-#        print('', file=STREAM)
-#        quit(stk)
-#    print(str(evaluate(s, read(syntax))), file=STREAM, end='')
