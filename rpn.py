@@ -7,8 +7,7 @@ import stack
 PROMPT  = '> '
 STREAM  = sys.stdout
 Stack   = stack.Stack
-Op      = Callable[[Stack[int]], int]
-ExpAtom = Union[int, Op]
+ExpAtom = Callable[[Stack[int]], int]
 Exp     = Union[ExpAtom, List[ExpAtom]]
 
 # Pre-processing
@@ -16,10 +15,6 @@ def tokenize(entry: str) -> List[str]:
     return entry.split()
 
 def is_valid(token: str) -> bool:
-    return (is_op(token)  or
-            all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
-
-def is_op(token: str) -> bool:
     return (token == '+' or
             token == '-' or
             token == '*' or token == 'x' or
@@ -27,7 +22,8 @@ def is_op(token: str) -> bool:
             token == 'n' or
             token == 'c' or
 #           token == 'p' or
-            token == 'q')
+            token == 'q' or
+            all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
 
 # Syntactic processing (must be given valid syntax)
 def div(s: Stack[int]) -> int:
@@ -36,51 +32,41 @@ def div(s: Stack[int]) -> int:
         print('Division By 0 Error', file=STREAM)
     else:
         x = int((1 / x) * stack.pop(s))
-    return x
+    return stack.push(s, x)
         
-def op(sym: str) -> Op:
-    """ Generates genuine operators from syntactic forms.
-        Operators only pop and cannot push to the stack. """
-    op: Op
-    if sym == '+':
-        op = lambda s: stack.pop(s) + stack.pop(s)
-    elif sym == '-':
-        op = lambda s: -stack.pop(s) + stack.pop(s)
-    elif sym == '*' or sym == 'x':
-        op = lambda s: stack.pop(s) * stack.pop(s)
-    elif sym == '/':
-        op = div
-    elif sym == 'n':
-        op = lambda s: -stack.pop(s)
-    elif sym == 'c':
-        op = stack.empty
-#   elif sym == 'p':
-#       op = lambda s: print(s)
-    elif sym == 'q':
-        op = quit
-    return op
-
 def exp(sym: str) -> ExpAtom:
-    """ Generates atomic RPN expressions """
+    """ Generates atomic RPN expressions from syntactic forms"""
     e: ExpAtom
-    if is_op(sym):
-        e = op(sym)
+    if sym == '+':
+        e = lambda s: stack.push(s, stack.pop(s) + stack.pop(s))
+    elif sym == '-':
+        e = lambda s: stack.push(s, -stack.pop(s) + stack.pop(s))
+    elif sym == '*' or sym == 'x':
+        e = lambda s: stack.push(s, stack.pop(s) * stack.pop(s))
+    elif sym == '/':
+        e = div
+    elif sym == 'n':
+        e = lambda s: stack.push(s, -stack.pop(s))
+    elif sym == 'c':
+        e = stack.empty
+#   elif sym == 'p':
+#       e = lambda s: print(s)
+    elif sym == 'q':
+        e = quit
     else:
-        e = int(sym)
+        e = (lambda v: lambda s: stack.push(s, v))(int(sym))
     return e
 
 # Semantic processing
 def evaluate(s: Stack[int], e: Optional[Exp]) -> int:
-    """ Evaluates RPN expressions and pushes them to the stack """
+    """ Evaluates RPN expressions """
     result = stack.peek(s)
-    if isinstance(e, int):
-        result = stack.push(s, e)
-    elif isinstance(e, list):
+    if isinstance(e, list):
         if len(e) > 0:
             evaluate(s, e[0])
             result = evaluate(s, e[1:])
-    elif e != None: # would be nice to typecheck this better,
-        result = evaluate(s, cast(Op, e)(s)) # but casting is fine for now
+    elif e != None:
+        result = cast(ExpAtom, e)(s)
     return result
         
 # Main logic
