@@ -91,9 +91,10 @@ def quit(s: Stack[int]) -> int:
     sys.exit()
     return 0 # never happens, exists solely so evaluate() always returns int
 
-def read(tokens: List[str]) -> Optional[Exp]:
+def read(entry: str) -> Optional[Exp]:
     """ Parser and preprocessor, returns valid RPN syntax or None """
     result = None
+    tokens = tokenize(entry)
     if not all(is_valid(t) for t in tokens):
         print('Syntax Error', file=STREAM)
     else:
@@ -103,11 +104,10 @@ def read(tokens: List[str]) -> Optional[Exp]:
 def repl(s: Stack[int]) -> None:
     """ Ye Olde Recursive REPL (maybe not the best idea for Python *shrug*) """
     try:
-        syntax = tokenize(input(PROMPT))
+        print(str(evaluate(s, read(input(PROMPT)))), file=STREAM)
     except EOFError:
         print('', file=STREAM)
         quit(s)
-    print(str(evaluate(s, read(syntax))), file=STREAM)
     repl(s)
 
 # Entry point
