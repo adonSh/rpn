@@ -1,13 +1,14 @@
 import sys
 from typing import List, Callable, Union, Optional, cast
 
-import stack
+import intstack as stack
 
 # Constants and typedefs
 PROMPT  = '> '
 STREAM  = sys.stdout
 Stack   = stack.Stack
-ExpAtom = Callable[[Stack[int]], int]
+Env     = Stack[int]
+ExpAtom = Callable[[Stack[int]], Stack[int]]
 Exp     = Union[ExpAtom, List[ExpAtom]]
 
 # Pre-processing
@@ -26,31 +27,32 @@ def is_valid(token: str) -> bool:
             all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
 
 # Syntactic processing (must be given valid syntax)
-def div(s: Stack[int]) -> int:
-    x = stack.pop(s)
-    if x == 0:
+def div(s: Stack[int]) -> Stack[int]:
+    result = s
+    if stack.peek(s) == 0:
         print('Division By 0 Error', file=STREAM)
     else:
-        x = int((1 / x) * stack.pop(s))
-    return stack.push(s, x)
+        x = int((1 / stack.peek(s)) * stack.peek(stack.pop(s)))
+        result = stack.push(stack.pop(stack.pop(s)), int((1 / stack.peek(s)) * stack.peek(stack.pop(s))))
+    return result
         
 def exp(sym: str) -> ExpAtom:
     """ Generates atomic RPN expressions from syntactic forms"""
     e: ExpAtom
     if sym == '+':
-        e = lambda s: stack.push(s, stack.pop(s) + stack.pop(s))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)), stack.peek(s) + stack.peek(stack.pop(s)))
     elif sym == '-':
-        e = lambda s: stack.push(s, -stack.pop(s) + stack.pop(s))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)), -stack.peek(s) + stack.peek(stack.pop(s)))
     elif sym == '*' or sym == 'x':
-        e = lambda s: stack.push(s, stack.pop(s) * stack.pop(s))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)), stack.peek(s) * stack.peek(stack.pop(s)))
     elif sym == '/':
         e = div
     elif sym == 'n':
-        e = lambda s: stack.push(s, -stack.pop(s))
+        e = lambda s: stack.push(stack.pop(s), -stack.peek(stack.pop(s)))
     elif sym == 'c':
-        e = stack.empty
+        e = lambda s: stack.new()
 #   elif sym == 'p':
-#       e = lambda s: print(s)
+#       e = stack.print
     elif sym == 'q':
         e = quit
     else:
@@ -58,43 +60,43 @@ def exp(sym: str) -> ExpAtom:
     return e
 
 # Semantic processing
-def evaluate(s: Stack[int], e: Optional[Exp]) -> int:
+def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
     """ Evaluates RPN expressions """
-    result = stack.peek(s)
-    if isinstance(e, list):
-        if len(e) > 0:
-            evaluate(s, e[0])
-            result = evaluate(s, e[1:])
-    elif e != None:
-        result = cast(ExpAtom, e)(s)
+    result = env
+    if isinstance(expr, list):
+        if len(expr) > 0:
+            result = evaluate(expr[1:], evaluate(expr[0], env))
+    elif expr != None:
+        result = cast(ExpAtom, expr)(env)
     return result
         
 # Main logic
-def quit(s: Stack[int]) -> int:
-    print(stack.pop(s), file=sys.stdout)
+def quit(s: Stack[int]) -> Stack[int]:
+    print(stack.peek(s), file=sys.stdout)
     if STREAM != sys.stdout:
         STREAM.close()
     sys.exit()
-    return 0 # never happens, exists solely so evaluate() always returns int
+    return s # never happens, exists solely so evaluate() always returns int
 
 def read(entry: str) -> Optional[Exp]:
     """ Parser and preprocessor, returns valid RPN syntax or None """
     result = None
     tokens = tokenize(entry)
     if not all(is_valid(t) for t in tokens):
-        print('Syntax Error', file=STREAM)
+        print('Syntax Error', file=sys.stderr)
     else:
         result = list(map(exp, tokens))
     return result
 
-def repl(s: Stack[int]) -> None:
+def repl(env: Env) -> None:
     """ Ye Olde Recursive REPL (maybe not the best idea for Python *shrug*) """
     try:
-        print(str(evaluate(s, read(input(PROMPT)))), file=STREAM)
+        newenv = evaluate(read(input(PROMPT)), env)
+        print(str(stack.peek(newenv)), file=STREAM)
     except EOFError:
         print('', file=STREAM)
-        quit(s)
-    repl(s)
+        quit(env)
+    repl(newenv)
 
 # Entry point
 if len(sys.argv) > 1:

@@ -1,4 +1,4 @@
-Idea 1
+Idea 1 [X]
 ------
 Would be interesting if all expressions---Including ints---were operators and
 operators pushed to the stack. Then evaluate() would never explicitly interact
@@ -41,14 +41,18 @@ do it for the next interpreter, not RPN.
 RPN has no abstract syntax. That's kind of the point. Any expression just
 evaluates to a series of pops and pushes. The syntax just encodes them.
 
-Idea 2
-------
-I'd like to put the abstract syntax down in BNF.
-
-Idea 3
+Idea 2 [X]
 ------
 Now that we're committed to this unified semantics, couldn't we make the whole
 thing more functional by having evaluate return the stack rather than a value?
 It might be a little more consistent, since the only datatype is the stack.
 Evaluate should take a stack and return a stack. It doesn't know what a number
 is, it only applies the expressions and returns the resulting stack.
+
+This fits the repl model better. Though it's not really the most appropriate
+implementation for Python. If you do a less functional version, evaluate should
+control the stack and the expressions should just do arithmetic.
+
+Idea 3 [ ]
+------
+I'd like to put the syntax down in BNF.
