@@ -8,8 +8,8 @@ PROMPT  = '> '
 STREAM  = sys.stdout
 Stack   = stack.Stack
 Env     = Stack[int]
-ExpAtom = Callable[[Stack[int]], Stack[int]]
-Exp     = Union[ExpAtom, List[ExpAtom]]
+Atom    = Callable[[Stack[int]], Stack[int]]
+Exp     = Union[Atom, List[Atom]]
 
 # Pre-processing
 def tokenize(entry: str) -> List[str]:
@@ -36,9 +36,9 @@ def div(s: Stack[int]) -> Stack[int]:
         result = stack.push(stack.pop(stack.pop(s)), int((1 / stack.peek(s)) * stack.peek(stack.pop(s))))
     return result
         
-def exp(sym: str) -> ExpAtom:
+def exp(sym: str) -> Atom:
     """ Generates atomic RPN expressions from syntactic forms"""
-    e: ExpAtom
+    e: Atom
     if sym == '+':
         e = lambda s: stack.push(stack.pop(stack.pop(s)), stack.peek(s) + stack.peek(stack.pop(s)))
     elif sym == '-':
@@ -67,7 +67,7 @@ def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
         if len(expr) > 0:
             result = evaluate(expr[1:], evaluate(expr[0], env))
     elif expr != None:
-        result = cast(ExpAtom, expr)(env)
+        result = cast(Atom, expr)(env)
     return result
         
 # Main logic
