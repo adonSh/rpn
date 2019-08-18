@@ -76,7 +76,7 @@ def quit(s: Stack[int]) -> Stack[int]:
     if STREAM != sys.stdout:
         STREAM.close()
     sys.exit()
-    return s # never happens, exists solely so evaluate() always returns int
+    return s # never happens, present so evaluate() returns proper type
 
 def read(entry: str) -> Optional[Exp]:
     """ Parser and preprocessor, returns valid RPN syntax or None """
