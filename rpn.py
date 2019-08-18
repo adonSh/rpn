@@ -22,44 +22,51 @@ def is_valid(token: str) -> bool:
             token == '/' or
             token == 'n' or
             token == 'c' or
-#           token == 'p' or
             token == 'q' or
             all(ord(digit) > 47 and ord(digit) < 58 for digit in token))
 
-# Syntactic processing (must be given valid syntax)
+# Semantics
+def quit(s: Stack[int]) -> Stack[int]:
+    print(stack.peek(s), file=sys.stdout)
+    if STREAM != sys.stdout:
+        STREAM.close()
+    sys.exit()
+    return s # never happens, present so evaluate() returns proper type
+
 def div(s: Stack[int]) -> Stack[int]:
     result = s
     if stack.peek(s) == 0:
         print('Division By 0 Error', file=STREAM)
     else:
         x = int((1 / stack.peek(s)) * stack.peek(stack.pop(s)))
-        result = stack.push(stack.pop(stack.pop(s)), int((1 / stack.peek(s)) * stack.peek(stack.pop(s))))
+        result = stack.push(stack.pop(stack.pop(s)), x)
     return result
         
 def exp(sym: str) -> Atom:
     """ Generates atomic RPN expressions from syntactic forms"""
     e: Atom
     if sym == '+':
-        e = lambda s: stack.push(stack.pop(stack.pop(s)), stack.peek(s) + stack.peek(stack.pop(s)))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)),
+                                 stack.peek(s) + stack.peek(stack.pop(s)))
     elif sym == '-':
-        e = lambda s: stack.push(stack.pop(stack.pop(s)), -stack.peek(s) + stack.peek(stack.pop(s)))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)),
+                                 -stack.peek(s) + stack.peek(stack.pop(s)))
     elif sym == '*' or sym == 'x':
-        e = lambda s: stack.push(stack.pop(stack.pop(s)), stack.peek(s) * stack.peek(stack.pop(s)))
+        e = lambda s: stack.push(stack.pop(stack.pop(s)),
+                                 stack.peek(s) * stack.peek(stack.pop(s)))
     elif sym == '/':
         e = div
     elif sym == 'n':
         e = lambda s: stack.push(stack.pop(s), -stack.peek(stack.pop(s)))
     elif sym == 'c':
         e = lambda s: stack.new()
-#   elif sym == 'p':
-#       e = stack.print
     elif sym == 'q':
         e = quit
     else:
         e = (lambda v: lambda s: stack.push(s, v))(int(sym))
     return e
 
-# Semantic processing
+# Main logic
 def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
     """ Evaluates RPN expressions """
     result = env
@@ -70,16 +77,8 @@ def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
         result = cast(Atom, expr)(env)
     return result
         
-# Main logic
-def quit(s: Stack[int]) -> Stack[int]:
-    print(stack.peek(s), file=sys.stdout)
-    if STREAM != sys.stdout:
-        STREAM.close()
-    sys.exit()
-    return s # never happens, present so evaluate() returns proper type
-
 def read(entry: str) -> Optional[Exp]:
-    """ Parser and preprocessor, returns valid RPN syntax or None """
+    """ Parser and preprocessor, returns semantic RPN expression or None """
     result = None
     tokens = tokenize(entry)
     if not all(is_valid(t) for t in tokens):
@@ -89,7 +88,7 @@ def read(entry: str) -> Optional[Exp]:
     return result
 
 def repl(env: Env) -> None:
-    """ Ye Olde Recursive REPL (maybe not the best idea for Python *shrug*) """
+    """ Ye Olde Recursive REPL """
     try:
         newenv = evaluate(read(input(PROMPT)), env)
         print(str(stack.peek(newenv)), file=STREAM)

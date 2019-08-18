@@ -53,6 +53,6 @@ This fits the repl model better. Though it's not really the most appropriate
 implementation for Python. If you do a less functional version, evaluate should
 control the stack and the expressions should just do arithmetic.
 
-Idea 3 [ ]
+Idea 3 [X]
 ------
 I'd like to put the syntax down in BNF.
