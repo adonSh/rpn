@@ -43,7 +43,7 @@ def div(s: Stack[int]) -> Stack[int]:
     return result
         
 def exp(sym: str) -> Atom:
-    """ Generates atomic RPN expressions from syntactic forms"""
+    """ Generates semantics from RPN expressions """
     e: Atom
     if sym == '+':
         e = lambda s: stack.push(stack.pop(stack.pop(s)),
@@ -68,7 +68,7 @@ def exp(sym: str) -> Atom:
 
 # Main logic
 def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
-    """ Evaluates RPN expressions """
+    """ Applies semantic expressions and returns the resulting stack """
     result = env
     if isinstance(expr, list):
         if len(expr) > 0:
@@ -91,10 +91,10 @@ def repl(env: Env) -> None:
     """ Ye Olde Recursive REPL """
     try:
         newenv = evaluate(read(input(PROMPT)), env)
-        print(str(stack.peek(newenv)), file=STREAM)
     except EOFError:
         print('', file=STREAM)
         quit(env)
+    print(str(stack.peek(newenv)), file=STREAM)
     repl(newenv)
 
 # Entry point
