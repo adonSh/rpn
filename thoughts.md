@@ -56,3 +56,7 @@ control the stack and the expressions should just do arithmetic.
 Idea 3 [X]
 ------
 I'd like to put the syntax down in BNF.
+
+Idea 4 [X]
+----------
+Fact: Python is not the correct language for the implementation I have chosen.
