@@ -4,12 +4,11 @@ from typing import List, Callable, Union, Optional, cast
 import intstack as stack
 
 # Constants and typedefs
-PROMPT  = '> '
-STREAM  = sys.stdout
-Stack   = stack.Stack
-Env     = Stack[int]
-Atom    = Callable[[Stack[int]], Stack[int]]
-Exp     = Union[Atom, List[Atom]]
+PROMPT = '> '
+STREAM = sys.stdout
+Stack  = stack.Stack
+Atom   = Callable[[Stack[int]], Stack[int]]
+Exp    = Union[Atom, List[Atom]]
 
 # Pre-processing
 def tokenize(entry: str) -> List[str]:
@@ -28,10 +27,9 @@ def is_valid(token: str) -> bool:
 # Semantics
 def quit(s: Stack[int]) -> Stack[int]:
     print(stack.peek(s), file=sys.stdout)
-    if STREAM != sys.stdout:
-        STREAM.close()
+    STREAM.close()
     sys.exit()
-    return s # never happens, present so evaluate() returns proper type
+    return s # never happens, but allows evaluate() to return proper type
 
 def div(s: Stack[int]) -> Stack[int]:
     result = s
@@ -67,43 +65,48 @@ def exp(sym: str) -> Atom:
     return e
 
 # Main logic
-def evaluate(expr: Optional[Exp], env: Env) -> Stack[int]:
+def evaluate(expr: Optional[Exp], stk: Stack[int]) -> Stack[int]:
     """ Applies semantic expressions and returns the resulting stack """
-    result = env
+    result = stk
     if isinstance(expr, list):
         if len(expr) > 0:
-            result = evaluate(expr[1:], evaluate(expr[0], env))
+            result = evaluate(expr[1:], evaluate(expr[0], stk))
     elif expr != None:
-        result = cast(Atom, expr)(env)
+        result = cast(Atom, expr)(stk)
     return result
         
 def read(entry: str) -> Optional[Exp]:
-    """ Parser and preprocessor, returns semantic RPN expression or None """
+    """ Parser and preprocessor. Since RPN has no abstract syntax I have read()
+        go ahead and return the actual semantics for each expression. """
     result = None
     tokens = tokenize(entry)
+
     if not all(is_valid(t) for t in tokens):
         print('Syntax Error', file=sys.stderr)
     else:
         result = list(map(exp, tokens))
+
     return result
 
-def repl(env: Env) -> None:
+def repl(stk: Stack[int]) -> None:
     """ Ye Olde Recursive REPL """
     try:
-        newenv = evaluate(read(input(PROMPT)), env)
+        newstk = evaluate(read(input(PROMPT)), stk)
     except EOFError:
         print('', file=STREAM)
-        quit(env)
-    print(str(stack.peek(newenv)), file=STREAM)
-    repl(newenv)
+        quit(stk)
+
+    print(str(stack.peek(newstk)), file=STREAM)
+    repl(newstk)
 
 # Entry point
-if len(sys.argv) > 1:
-    if sys.argv[1] == '-q' or sys.argv[1] == '--quiet':
-        PROMPT = ''
-        STREAM = open('/dev/null', 'w')
-    else:
-        print('invalid options', file=sys.stderr)
-        sys.exit(1)
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-q' or sys.argv[1] == '--quiet':
+            PROMPT = ''
+            STREAM = open('/dev/null', 'w')
+        else:
+            print('invalid options', file=sys.stderr)
+            sys.exit(1)
 
-repl(stack.new())
+    repl(stack.new())

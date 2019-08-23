@@ -1,4 +1,5 @@
-""" Integer stack for RPN calculator. Always contains at least one value (0)
+""" Implementation of an immutable integer stack for RPN calculator.
+    Always contains at least one value (0).
 """
 from typing import List
 
