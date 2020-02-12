@@ -31,15 +31,6 @@ def quit(s: Stack[int]) -> Stack[int]:
     sys.exit()
     return s # never happens, but allows evaluate() to return proper type
 
-def div(s: Stack[int]) -> Stack[int]:
-    result = s
-    if stack.peek(s) == 0:
-        print('Division By 0 Error', file=STREAM)
-    else:
-        x = int((1 / stack.peek(s)) * stack.peek(stack.pop(s)))
-        result = stack.push(stack.pop(stack.pop(s)), x)
-    return result
-        
 def exp(sym: str) -> Atom:
     """ Generates semantics from RPN expressions """
     e: Atom
@@ -53,6 +44,14 @@ def exp(sym: str) -> Atom:
         e = lambda s: stack.push(stack.pop(stack.pop(s)),
                                  stack.peek(s) * stack.peek(stack.pop(s)))
     elif sym == '/':
+        def div(s: Stack[int]) -> Stack[int]:
+            result = s
+            if stack.peek(s) == 0:
+                print('Division By 0 Error', file=STREAM)
+            else:
+                x = int((1 / stack.peek(s)) * stack.peek(stack.pop(s)))
+                result = stack.push(stack.pop(stack.pop(s)), x)
+            return result
         e = div
     elif sym == 'n':
         e = lambda s: stack.push(stack.pop(s), -stack.peek(stack.pop(s)))
