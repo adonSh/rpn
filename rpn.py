@@ -54,7 +54,7 @@ def exp(sym: str) -> Atom:
             return result
         e = div
     elif sym == 'n':
-        e = lambda s: stack.push(stack.pop(s), -stack.peek(stack.pop(s)))
+        e = lambda s: stack.push(stack.pop(s), -stack.peek(s))
     elif sym == 'c':
         e = lambda s: stack.new()
     elif sym == 'q':
